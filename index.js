@@ -235,6 +235,7 @@ function clicked(e) {
     var id = e.target.id;
     var x = parseInt(id.charAt(4));
     var y = parseInt(id.charAt(5));
+    console.log(x, y);
 
     if (board.isFlip(x, y, BLACK)) {
         var flipped = board.getFlipCells(x, y, BLACK)
@@ -258,7 +259,7 @@ function solve(color) {
                     nextBoard.flip(flipped[k][0], flipped[k][1], color);
                 }
                 nextBoard.put(x, y, color);
-                var score = gameTree(nextBoard, !color, 0);
+                var score = -gameTree(nextBoard, !color, -highScore, 0);
                 console.log(x, y, score);
                 if (score > highScore) {
                     highScore = score;
@@ -278,9 +279,9 @@ function solve(color) {
     update();
 }
 
-function gameTree(originBoard, color, depth) {
-    if (originBoard.isFinish()) return -originBoard.calcScore(color) * 1000;
-    if (depth == 5) return -originBoard.calcWeightData(color);
+function gameTree(originBoard, color, maxScore, depth) {
+    if (originBoard.isFinish()) return originBoard.calcScore(color) * 1000;
+    if (depth == 6) return originBoard.calcWeightData(color);
     var highScore = -1000000;
     for (var x = 0; x < boardSize; ++x) {
         for (var y = 0; y < boardSize; ++y) {
@@ -291,12 +292,14 @@ function gameTree(originBoard, color, depth) {
                     nextBoard.flip(flipped[k][0], flipped[k][1], color);
                 }
                 nextBoard.put(x, y, color);
-                var score = gameTree(nextBoard, !color, depth + 1);
+                var score = -gameTree(nextBoard, !color, -highScore, depth + 1);
                 if (score > highScore) highScore = score;
+                if (highScore >= maxScore) return highScore;
             }
         }
     }
-    return -highScore;
+    if (highScore == -1000000) return -gameTree(nextBoard, !color, -highScore, deoth + 1);
+    return highScore;
 }
 
 function copyBoard(originBoard) {
