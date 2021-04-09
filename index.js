@@ -1,5 +1,85 @@
 "use strict";
 
+const BLACK = 0, WHITE = 1;
+const boardSize = 8, bitSize = 32;
+class Board {
+    #blackStone1;
+    #blackStone2;
+    #whiteStone1;
+    #whiteStone2;
+    constructor() {
+        this.#blackStone1 = 0, this.#blackStone2 = 0;
+        this.#whiteStone1 = 0, this.#whiteStone2 = 0;
+    }
+
+    position(x, y) {
+        return x * boardSize + y;
+    }
+
+    put(x, y, color) {
+        var p = this.position(x, y);
+        if (color == BLACK) {
+            if (p < bitSize) {
+                this.#blackStone1 |= 1 << p;
+            } else {
+                this.#blackStone2 |= 1 << (p - 32);
+            }
+        } else {
+            if (p < bitSize) {
+                this.#whiteStone1 |= 1 << p;
+            } else {
+                this.#whiteStone2 |= 1 << (p - 32);
+            }
+        }
+    }
+
+    flip(x, y, color) {
+        this.put(x, y, color);
+        var p = this.position(x, y);
+        if (color == BLACK) {
+            if (p < bitSize) this.#whiteStone1 ^= 1 << p;
+            else this.#whiteStone2 ^= 1 << (p - 32);
+
+        } else {
+            if (p < bitSize) this.#blackStone1 ^= 1 << p;
+            else this.#blackStone2 ^= 1 << (p - 32);
+
+        }
+
+    }
+
+    countStone(color) {
+        var res = 0;
+        if (color == BLACK) {
+            for (var i = 0; i < bitSize; ++i) {
+                if ((this.#blackStone1 >> i) & 1) ++res;
+                if ((this.#blackStone2 >> i) & 1) ++res;
+            }
+        } else {
+            for (var i = 0; i < bitSize; ++i) {
+                if ((this.#whiteStone1 >> i) & 1) ++res;
+                if ((this.#whiteStone2 >> i) & 1) ++res;
+            }
+        }
+        return res;
+    }
+
+    isStone(x, y, color) {
+        var p = this.position(x, y);
+        if (color == BLACK) {
+            if (p < 32) return (this.#blackStone1 >> p) & 1;
+            else return (this.#blackStone2 >> (p - 32)) & 1;
+        } else {
+            if (p < 32) return (this.#whiteStone1 >> p) & 1;
+            else return (this.#whiteStone2 >> (p - 32)) & 1;
+        }
+    }
+
+    isSpace(x, y) {
+        return !this.isStone(x, y, BLACK) && !this.isStone(x, y, WHITE);
+    }
+}
+
 var WeightData = [
     [30, -12, 0, -1, -1, 0, -12, 30],
     [-12, -15, -3, -3, -3, -3, -15, -12],
@@ -10,50 +90,52 @@ var WeightData = [
     [-12, -15, -3, -3, -3, -3, -15, -12],
     [30, -12, 0, -1, -1, 0, -12, 30],
 ];
-var BLACK = 1, WHITE = 2;
-var data = [];
+var board = new Board();
 var myTurn = false;
 
 function init() {
     var b = document.getElementById("board");
-    for (var i = 0; i < 8; i++) {
+    for (var x = 0; x < boardSize; x++) {
         var tr = document.createElement("tr");
-        data[i] = [0, 0, 0, 0, 0, 0, 0, 0];
-        for (var j = 0; j < 8; j++) {
+        for (var y = 0; y < boardSize; y++) {
             var td = document.createElement("td");
             td.className = "cell";
-            td.id = "cell" + i + j;
+            td.id = "cell" + x + y;
             td.onclick = clicked;
             tr.appendChild(td);
         }
         b.appendChild(tr);
     }
-    put(3, 3, BLACK);
-    put(4, 4, BLACK);
-    put(3, 4, WHITE);
-    put(4, 3, WHITE);
+    board.put(3, 3, BLACK);
+    board.put(4, 4, BLACK);
+    board.put(3, 4, WHITE);
+    board.put(4, 3, WHITE);
     update();
 }
 
+function inBoard(x, y) {
+    return x >= 0 && x < boardSize && y >= 0 && y < boardSize
+}
+
 function update() {
-    var numWhite = 0, numBlack = 0;
-    for (var x = 0; x < 8; x++) {
-        for (var y = 0; y < 8; y++) {
-            if (data[x][y] == WHITE) {
-                numWhite++;
-            }
-            if (data[x][y] == BLACK) {
-                numBlack++;
-            }
-        }
-    }
+    var numBlack = board.countStone(BLACK);
+    var numWhite = board.countStone(WHITE);
     document.getElementById("numBlack").textContent = numBlack;
     document.getElementById("numWhite").textContent = numWhite;
+
+    for (var x = 0; x < boardSize; ++x) {
+        for (var y = 0; y < boardSize; ++y) {
+            if (board.isSpace(x, y)) continue;
+            var c = document.getElementById("cell" + x + y);
+            c.textContent = "●";
+            c.className = "cell " + (board.isStone(x, y, BLACK) ? "black" : "white");
+        }
+    }
 
     var blackFlip = canFlip(BLACK);
     var whiteFlip = canFlip(WHITE);
 
-    if (numWhite + numBlack == 64 || (!blackFlip && !whiteFlip)) {
+    if (blackFlip == 0 && whiteFlip == 0) {
         showMessage("ゲームオーバー");
         if (numWhite > numBlack) {
             showMessage("あなたの負け！");
@@ -62,20 +144,17 @@ function update() {
         } else {
             showMessage("引き分け！")
         }
-    }
-    else if (!blackFlip) {
+    } else if (blackFlip == 0 && !myTurn) {
         showMessage("黒スキップ");
         myTurn = false;
-    }
-    else if (!whiteFlip) {
+    } else if (whiteFlip == 0 && myTurn) {
         showMessage("白スキップ");
         myTurn = true;
-    }
-    else {
+    } else {
         myTurn = !myTurn;
     }
     if (!myTurn) {
-        setTimeout(think, 1000);
+        setTimeout(solve, 1000);
     }
 }
 
@@ -91,41 +170,32 @@ function clicked(e) {
         return;
     }
     var id = e.target.id;
-    var i = parseInt(id.charAt(4));
-    var j = parseInt(id.charAt(5));
+    var x = parseInt(id.charAt(4));
+    var y = parseInt(id.charAt(5));
 
-    var flipped = getFlipCells(i, j, BLACK)
+    var flipped = getFlipCells(x, y, BLACK)
     if (flipped.length > 0) {
         for (var k = 0; k < flipped.length; k++) {
-            put(flipped[k][0], flipped[k][1], BLACK);
+            board.flip(flipped[k][0], flipped[k][1], BLACK);
         }
-        put(i, j, BLACK);
+        board.put(x, y, BLACK);
         update();
     }
 }
 
-function put(i, j, color) {
-    var c = document.getElementById("cell" + i + j);
-    c.textContent = "●";
-    c.className = "cell " + (color == BLACK ? "black" : "white");
-    data[i][j] = color;
-}
-
-function think() {
+function solve() {
     var highScore = -1000;
     var px = -1, py = -1;
-    for (var x = 0; x < 8; x++) {
-        for (var y = 0; y < 8; y++) {
-            var tmpData = copyData();
+    for (var x = 0; x < boardSize; ++x) {
+        for (var y = 0; y < boardSize; ++y) {
+            var nextBoard = copyBoard();
             var flipped = getFlipCells(x, y, WHITE);
             if (flipped.length > 0) {
-                for (var i = 0; i < flipped.length; i++) {
-                    var p = flipped[i][0];
-                    var q = flipped[i][1];
-                    tmpData[p][q] = WHITE;
-                    tmpData[x][y] = WHITE;
+                for (var k = 0; k < flipped.length; ++k) {
+                    nextBoard.flip(flipped[k][0], flipped[k][1], WHITE);
                 }
-                var score = calcWeightData(tmpData);
+                nextBoard.put(x, y, WHITE);
+                var score = calcWeightData(nextBoard);
                 if (score > highScore) {
                     highScore = score;
                     px = x, py = y;
@@ -135,22 +205,21 @@ function think() {
     }
 
     if (px >= 0 && py >= 0) {
-        var flipped = getFlipCells(px, py, WHITE)
-        if (flipped.length > 0) {
-            for (var k = 0; k < flipped.length; k++) {
-                put(flipped[k][0], flipped[k][1], WHITE);
-            }
+        var flipped = getFlipCells(px, py, WHITE);
+        console.log(px, py, flipped.length);
+        for (var k = 0; k < flipped.length; ++k) {
+            board.flip(flipped[k][0], flipped[k][1], WHITE);
         }
-        put(px, py, WHITE);
+        board.put(px, py, WHITE);
     }
     update();
 }
 
-function calcWeightData(tmpData) {
+function calcWeightData(nextBoard) {
     var score = 0;
-    for (var x = 0; x < 8; x++) {
-        for (var y = 0; y < 8; y++) {
-            if (tmpData[x][y] == WHITE) {
+    for (var x = 0; x < boardSize; x++) {
+        for (var y = 0; y < boardSize; y++) {
+            if (nextBoard.isStone(x, y, WHITE)) {
                 score += WeightData[x][y];
             }
         }
@@ -158,20 +227,20 @@ function calcWeightData(tmpData) {
     return score;
 }
 
-function copyData() {
-    var tmpData = [];
-    for (var x = 0; x < 8; x++) {
-        tmpData[x] = [];
-        for (var y = 0; y < 8; y++) {
-            tmpData[x][y] = data[x][y];
+function copyBoard() {
+    var res = new Board();
+    for (var x = 0; x < boardSize; ++x) {
+        for (var y = 0; y < boardSize; ++y) {
+            if (board.isStone(x, y, BLACK)) res.put(x, y, BLACK);
+            else if (board.isStone(x, y, WHITE)) res.put(x, y, WHITE);
         }
     }
-    return tmpData;
+    return res;
 }
 
 function canFlip(color) {
-    for (var x = 0; x < 8; x++) {
-        for (var y = 0; y < 8; y++) {
+    for (var x = 0; x < boardSize; ++x) {
+        for (var y = 0; y < boardSize; ++y) {
             var flipped = getFlipCells(x, y, color);
             if (flipped.length > 0) {
                 return true;
@@ -181,37 +250,28 @@ function canFlip(color) {
     return false;
 }
 
-function getFlipCells(i, j, color) {
-    if (data[i][j] == BLACK || data[i][j] == WHITE) {
+function getFlipCells(x, y, color) {
+    if (!board.isSpace(x, y)) {
         return [];
     }
     var dirs = [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]];
-    var result = [];
-    for (var p = 0; p < dirs.length; p++) {
-        var flipped = getFlipCellsOneDir(i, j, dirs[p][0], dirs[p][1], color);
-        result = result.concat(flipped)
+    var res = [];
+    for (var k = 0; k < dirs.length; ++k) {
+        var flipped = getFlipCellsOneDir(x, y, dirs[k][0], dirs[k][1], color);
+        res = res.concat(flipped)
     }
-    return result;
+    return res;
 }
 
-function getFlipCellsOneDir(i, j, dx, dy, color) {
-    var x = i + dx;
-    var y = j + dy;
-    var fliped = [];
-    if (x < 0 || y < 0 || x > 7 || y > 7 || data[x][y] == color || data[x][y] == 0) {
-        return [];
-    }
-    fliped.push([x, y]);
+function getFlipCellsOneDir(fx, fy, dx, dy, color) {
+    var x = fx, y = fy;
+    var res = [];
     while (true) {
         x += dx;
         y += dy;
-        if (x < 0 || y < 0 || x > 7 || y > 7 || data[x][y] == 0) {
-            return [];
-        }
-        if (data[x][y] == color) {
-            return fliped;
-        } else {
-            fliped.push([x, y]);
-        }
+        if (!inBoard(x, y) || board.isSpace(x, y)) return [];
+        if (board.isStone(x, y, color)) break;
+        res.push([x, y]);
     }
+    return res;
 }
