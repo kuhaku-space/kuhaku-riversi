@@ -135,12 +135,12 @@ class Board {
         return res;
     }
 
-    calcWeightData(color) {
+    calcEval(color) {
         var score = 0;
         for (var x = 0; x < boardSize; x++) {
             for (var y = 0; y < boardSize; y++) {
-                if (this.isStone(x, y, color)) score += WeightData[x][y];
-                else if (this.isStone(x, y, !color)) score -= WeightData[x][y];
+                if (this.isFlip(x, y, color)) --score;
+                else if (this.isFlip(x, y, !color)) ++score;
             }
         }
         return score;
@@ -281,7 +281,7 @@ function solve(color) {
 
 function gameTree(originBoard, color, maxScore, depth) {
     if (originBoard.isFinish()) return originBoard.calcScore(color) * 1000;
-    if (depth == 6) return originBoard.calcWeightData(color);
+    if (depth == 6) return originBoard.calcEval(color);
     var highScore = -1000000;
     for (var x = 0; x < boardSize; ++x) {
         for (var y = 0; y < boardSize; ++y) {
