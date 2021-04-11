@@ -150,8 +150,8 @@ class Board {
         var score = this.calcWeightData(color);
         for (var x = 0; x < boardSize; x++) {
             for (var y = 0; y < boardSize; y++) {
-                if (this.isFlip(x, y, color)) score -= 10;
-                else if (this.isFlip(x, y, !color)) score += 10;
+                if (this.isFlip(x, y, color)) score += 10;
+                else if (this.isFlip(x, y, !color)) score -= 10;
             }
         }
         return score;
