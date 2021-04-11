@@ -292,7 +292,7 @@ function solve(color) {
 
 function gameTree(originBoard, color, maxScore, depth) {
     if (originBoard.isFinish()) return originBoard.calcScore(color) * 1000;
-    if (depth == 6) return originBoard.calcEval(color);
+    if (depth == 5) return originBoard.calcEval(color);
     var highScore = -1000000;
     for (var x = 0; x < boardSize; ++x) {
         for (var y = 0; y < boardSize; ++y) {
