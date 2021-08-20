@@ -1,0 +1,25 @@
+#board {
+  background-color: black;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin-top: -300px;
+  margin-left: -300px;
+}
+
+td.cell {
+  background-color: green;
+  width: 75px;
+  height: 75px;
+  margin: 2px;
+  font-size: 50px;
+  text-align: center;
+}
+
+td.black {
+  color: black;
+}
+
+td.white {
+  color: white;
+}
